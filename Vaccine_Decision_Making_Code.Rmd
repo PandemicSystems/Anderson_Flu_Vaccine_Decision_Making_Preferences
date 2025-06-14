@@ -1,0 +1,473 @@
+---
+title: "Vaccine Decision Making: 2016 v 2018"
+author: "K. Anderson"
+date: "2024-05-15"
+output:
+  html_document:
+    toc: yes
+    toc_depth: 2
+    toc_float: yes
+    code_folding: hide
+  pdf_document:
+    toc: yes
+    toc_depth: '2'
+---
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+**Package and data loading**
+
+```{r}
+library(haven)
+library(tidyverse)
+library(car)
+library(GGally)
+library(ltm)
+library(survey)
+
+# library(jtools)
+# library(dplyr)
+# library(ggcorrplot)
+# library(plotly)
+# library(ggplot2)
+# library(ggpmisc)
+# library(ggpubr)
+# library(patchwork)
+# library(RCPA3)
+# library(psych)
+ 
+
+
+
+# #Lab Computer##
+SurveyData2016 <- read_sav("C:\\Users\\ka84085\\OneDrive - University of Georgia\\Desktop\\rstudio-export_8_9_24\\UnivGeorgia_AdultVacc2016Main.sav")
+SurveyData2018 <- read_sas("C:\\Users\\ka84085\\OneDrive - University of Georgia\\Desktop\\rstudio-export_8_9_24\\pn8351_ugavacc_111618_unweighted.sas7bdat")
+
+# #Laptop##
+# SurveyData2016 <- read_sav("C:\\Users\\kerri\\OneDrive\\Desktop\\PIPP Phase 1\\Survey 2016\\UnivGeorgia_AdultVacc2016Main.sav")
+# SurveyData2018 <- read_sas("C:\\Users\\kerri\\OneDrive\\Desktop\\PIPP Phase 1\\Survey 2018\\pn8351_ugavacc_111618_unweighted.sas7bdat")
+
+# #Server##
+# SurveyData2016 <- read_sav("/opt/home/ka84085/R/Survey_Data/UnivGeorgia_AdultVacc2016Main.sav")
+# SurveyData2018 <- read_sas("/opt/home/ka84085/R/Survey_Data/pn8351_ugavacc_111618_unweighted.sas7bdat")
+
+
+```
+
+# 2016 Survey Analysis
+
+**Independent Variables**\
+*Vaccine Confidence*:\
+Q20_A : <u>All</u> of the vaccines recommended for adults are safe.\
+Q20_B : <u>All</u> of the vaccines recommended for adults are effective.<br>
+Q20_C : Your overall health will benefit from getting <u>all</u> the recommended vaccines for adults.\
+*Vaccine Hesitancy*\
+Q19: Overall, how hesitant about getting recommended adult vaccines would you consider yourself to be?\
+*Vaccine History*\
+Q8B : Thinking about 2013, 2014, and 2015, in how many of those years did you get a flu vaccination?\
+*Shot Likelihood*\
+Q9: How likely are you to get a flu vaccination in this flu season – that is, this Fall or Winter?\
+
+**Block 1: Demographics**\
+GENDER + AGE + RACETHNICITY + INCOME + EDUC\
+
+**Block 2: Information**\
+*Perceived Flu Knowledge*\
+ Q32 :How well informed would you say you are about each of the following:\
+ A.	Seasonal influenza or flu?\
+ B.	Who should receive the seasonal influenza or flu vaccine?\
+ C.	The benefits associated with getting seasonal influenza or flu vaccine?\
+ D.	The risks associated with not getting a seasonal influenza or flu vaccine?\
+*Dr. Recommendation*\
+Q7: In the past year, has a physician or healthcare provider told you that you should receive an influenza or flu vaccine?\
+
+**Block 3: Flu Impacts**\
+*Flu Seriousness*\
+Q37: In general, if you get the flu, how serious do you think the illness would be <u>for you personally</u>?\
+*Flu Spread*\
+Q39: In general, if you get the flu, how likely do you think it is that you could pass the flu on to someone else?\
+
+**Block 4: Vaccine Attitudes (with Vaccine Confidence)**\
+*Vaccine Hesitancy*\
+Q19: Overall, how hesitant about getting recommended adult vaccines would you consider yourself to be?\
+*Vaccine Difficulty*\
+Q35: In general, how easy or difficult is it – or would it be – for you to get a flu shot or vaccination if you wanted one?\
+
+
+**Block 5: Health Decision-Making Preferences**\
+*Health Decision-Making Preferences*\
+Q16_A \
+(a) “I prefer natural ways to prevent and treat illness” vs. “I prefer mainstream medicine approaches to prevent and treat illness,”\
+Q16_E *(Q16_F in 2018 Survey)*\
+(b) “I prefer complementary or alternative medicine approaches to staying healthy and treating disease” vs. “I prefer science and evidence-based medicine approaches to staying healthy and treating illnesses,”	\
+Q16_B\
+(c) “I am most interested in the risks and potential side effects of a recommended drug or medicine.” vs. “I am most interested in the benefits and value of a recommended drug or medicine,”	\
+Q16_F *(Q16_G in 2018 Survey)*\
+(d) “I usually doubt health and medical advice from doctors and experts” vs. “I usually trust health and medical advice from doctors and experts,”\	
+Q16_D *(Q16_E in 2018 Survey)*\
+(e) “When sick or ill, I prefer as little medicine or treatment as possible” vs. “When sick or ill, I prefer as much medicine or treatment as possible,”	\
+Q16_H *(Q16_I in 2018 Survey)*\
+(f) “I usually wait until I have an illness or health problem and then take steps or actions to treat it” vs. “I usually take steps or actions in advance to prevent an illness or health problem.”	
+
+
+## 2016 Dataframe including both all components for the idependent and independent variables
+```{r}
+
+Survey_ICA_16 <- SurveyData2016 %>% 
+dplyr::select(CaseId, WEIGHT, AGE, GENDER, RACETHNICITY, INCOME, EDUC, Q20_A, Q20_B, Q20_C, Q8B, Q9, Q32_A, Q32_B, Q32_C, Q32_D, Q7, Q37, Q39, Q35, Q19, Q16_A, Q16_E, Q16_B, Q16_F, Q16_D, Q16_H )%>%
+#"Missing" and "I don't know" indicators (98, 99, 77) converted to "NAs" which were then kept in the data set. This condition is not applied to AGE
+  mutate(across(-AGE, ~ na_if(., 98) %>% na_if(99) %>% na_if(77))) %>%
+ #Reordering and/or reassigning response values such that higher values ~ higher behavior likelihood
+  mutate(RACETHNICITY = case_when(RACETHNICITY > 1 ~ "0", TRUE ~ "1")) %>%
+  mutate_at(vars(Q8B), ~.-1)%>%
+  mutate(Q9 = case_when(Q9 == 1 ~ 4, Q9 == 2 ~ 3, Q9 == 3 ~ 2, Q9 == 4 ~ 1, Q9 == 5 ~ 5, TRUE ~ NA_real_))%>% 
+  mutate(Q37 = case_when(Q37 == 1 ~ 4, Q37 == 2 ~ 3, Q37 == 3 ~ 2, Q37 == 4 ~ 1, TRUE ~ NA_real_))%>%
+  mutate(Q39 = case_when(Q39 == 1 ~ 4, Q39 == 2 ~ 3, Q39 == 3 ~ 2, Q39 == 4 ~ 1, TRUE ~ NA_real_))%>%
+  mutate_at(vars(RACETHNICITY), as.numeric) %>%
+  rowwise() %>%
+#Calculating a score (single value) for specific categories 
+  mutate(Q32_Avg = mean(c(Q32_A, Q32_B, Q32_C, Q32_D), na.rm = TRUE)) %>%
+  mutate(Q20_Avg = mean(c(Q20_A, Q20_B, Q20_C), na.rm = TRUE)) %>%
+  mutate(Q16_Avg = mean(c(Q16_A, Q16_E, Q16_B, Q16_F, Q16_D, Q16_H), na.rm = TRUE)) %>%
+  ungroup()
+
+```
+
+## 2016 Regression Model
+```{r}
+
+#Full regression model
+model_all_16 <- lm(Q9 ~ GENDER + AGE + RACETHNICITY + INCOME + EDUC + Q32_Avg + Q7  + Q37 + Q39 + Q20_Avg + Q19 + Q35 + Q16_Avg, data = na.exclude(Survey_ICA_16),weight = WEIGHT)
+summary(model_all_16)
+
+#For the Block 1 Incremental R2 significance
+model_B1_16 <- lm(Q9 ~ GENDER + AGE + RACETHNICITY + INCOME + EDUC, data = na.exclude(Survey_ICA_16), weight = WEIGHT)
+summary(model_B1_16)
+
+#Calculating table column sample size: 
+setNames(c(sum(complete.cases(Survey_ICA_16$Q20_Avg)) ,sum(complete.cases(Survey_ICA_16$Q19)), sum(complete.cases(Survey_ICA_16$Q8B)), sum(complete.cases(Survey_ICA_16$Q9))), c("Conf.", "Hes.", "Past Vx", "Intent"))
+
+```
+
+### 2016 Regression Diagnostics
+
+```{r}
+## Residuals
+#Calculate the residuals of MM model
+model_all_resid_16 <- resid(model_all_16)
+
+#produce residual vs. fitted plot
+plot(fitted(model_all_16), model_all_resid_16)
+abline(0,0)#add a horizontal line at 0 
+
+#create Q-Q plot for MM residuals
+qqnorm(model_all_resid_16) #To determine whether the residuals are normally distributed
+qqline(model_all_resid_16) #add a straight diagonal line to the plot
+
+#Create density plot of residuals
+plot(density(model_all_resid_16))
+
+```
+
+## 2016 Incremental $R^2$
+This script below is used to calculate the incremental $R^2$ for the hierarchical ordinary least squares (OLS) (adding variables by Blocks) regression models for the prediction of vaccine confidence, vaccine hesitancy, vaccine history and vaccination likelihood. 
+
+```{r}
+
+data_16 = na.exclude(Survey_ICA_16)
+
+extensions_16 <- list(c("Q32_Avg", "Q7"), c("Q37", "Q39"), c("Q20_Avg", "Q19", "Q35"), "Q16_Avg")#Each c() is a Block 2+
+response_16 <- list("Q20_Avg", "Q19", "Q8B", "Q9" ) #Response Variables: Confidence, Hesitancy, Past Vax, Future Vax
+
+results_list_16 <- list()
+
+for (i in seq_along(response_16)){
+
+base_formula_16 <- as.formula(paste(response_16[[i]], "~ GENDER + AGE + RACETHNICITY + INCOME + EDUC")) #Block 1
+base_model_16 <- lm(base_formula_16, data = data_16, weights = WEIGHT)
+base_r_squared_16 <- summary(base_model_16)$r.squared
+
+results_list_16[[i]] <- list()
+
+for (ii in seq_along(extensions_16)) {
+    # Combine the base formula and the current extension
+    extended_formula_16 <- update(base_formula_16, paste("~ . +", paste(extensions_16[[ii]], collapse = " + ")))
+    
+    # Fit the extended model
+    extended_model_16 <- lm(extended_formula_16, data = data_16, weights = WEIGHT)
+
+    # Get the R-squared for the extended model
+    extended_r_squared_16 <- summary(extended_model_16)$r.squared
+
+    # Calculate the incremental R-squared (ΔR²)
+    delta_r_squared_16 <- extended_r_squared_16 - base_r_squared_16 #Marginal difference (each extension)
+    #delta_r_squared_160 <- extended_r_squared_16 - Block1_r_squared_16 #Total difference
+
+    #Likelihood Ratio Test
+    LRT_16 <- anova(base_model_16, extended_model_16, test = "LRT")
+    
+    # Result List
+    results_list_16[[i]][[ii]] <- list(
+      base_r_squared = base_r_squared_16,
+      extended_formula = extended_formula_16,
+      extended_model_sumry = summary(extended_model_16),
+      extended_r_squared = extended_r_squared_16,
+      delta_r_squared = delta_r_squared_16,
+      LRT = LRT_16)
+    
+    #Resetting base formula to last extension
+    base_formula_16 <- extended_formula_16
+    base_model_16 <- lm(base_formula_16, data = data_16, weights = WEIGHT)
+    base_r_squared_16 <- summary(base_model_16)$r.squared
+  }
+
+} 
+
+print(results_list_16)
+
+```
+
+# 2018 Survey Analysis
+
+## 2018 Dataframe including both all components for the idependent and independent variables
+
+```{r}
+
+ Survey_ICA_18 <- SurveyData2018 %>% 
+  dplyr::select(CaseId,GENDER, AGE, RACETHNICITY, INCOME, EDUC, Q20_A, Q20_B, Q20_C, Q8B, Q9, Q32_A, Q32_B, Q32_C, Q32_D, Q7, Q37, Q39, Q35, Q19, Q16_A, Q16_F, Q16_B, Q16_G, Q16_E, Q16_I )%>%
+#"Missing" and "I don't know" indicators (98, 99, 77) converted to "NAs" which were then kept in the data set.
+  mutate(across(-AGE, ~ na_if(., 98) %>% na_if(99) %>% na_if(77))) %>%
+#Reordering and/or reassigning response values such that higher values ~ higher behavior likelihood
+  mutate(RACETHNICITY = case_when(RACETHNICITY > 1 ~ "0", TRUE ~ "1")) %>%
+  mutate_at(vars(Q8B), ~.-1)%>%
+  mutate(Q9 = case_when(Q9 == 1 ~ 4, Q9 == 2 ~ 3, Q9 == 3 ~ 2, Q9 == 4 ~ 1, Q9 == 5 ~ 5, TRUE ~ NA_real_))%>% #"Other"
+  mutate(Q37 = case_when(Q37 == 1 ~ 4, Q37 == 2 ~ 3, Q37 == 3 ~ 2, Q37 == 4 ~ 1, TRUE ~ NA_real_))%>%
+  mutate(Q39 = case_when(Q39 == 1 ~ 4, Q39 == 2 ~ 3, Q39 == 3 ~ 2, Q39 == 4 ~ 1, TRUE ~ NA_real_))%>%
+#Ensuring values are numeric
+  mutate_at(vars(RACETHNICITY), as.numeric)%>%
+  rowwise() %>%
+#Calculating a score (single value) for specific categories 
+  mutate(Q32_Avg = mean(c(Q32_A, Q32_B, Q32_C, Q32_D), na.rm = TRUE))%>%
+  mutate(Q20_Avg = mean(c(Q20_A, Q20_B, Q20_C), na.rm = TRUE)) %>%
+  mutate(Q16_Avg = mean(c(Q16_A, Q16_F, Q16_B, Q16_G, Q16_E, Q16_I), na.rm = TRUE)) %>%
+  ungroup()
+```
+
+## 2018 Regression Model
+```{r}
+model_all_18 <- lm(Q8B ~ GENDER + AGE + RACETHNICITY + INCOME + EDUC + Q32_Avg + Q7  + Q37 + Q39 + Q20_Avg + Q19 + Q35 + Q16_Avg, data = Survey_ICA_18)
+summary(model_all_18)
+
+#For the Block 1 Incremental R2 significance
+model_B1_18 <- lm(Q20_Avg ~ GENDER + AGE + RACETHNICITY + INCOME + EDUC, data = na.exclude(Survey_ICA_18))
+summary(model_B1_18)
+
+#Calculating table column sample size
+c(sum(complete.cases(Survey_ICA_18$Q20_Avg)), sum(complete.cases(Survey_ICA_18$Q19)), sum(complete.cases(Survey_ICA_18$Q8B)), sum(complete.cases(Survey_ICA_18$Q9)))
+
+```
+
+### 2018 Regression Diagnostics
+
+```{r}
+
+#Full model residuals
+model_all_resid_18 <- resid(model_all_18)
+
+# residual vs. fitted plot
+plot(fitted(model_all_18), model_all_resid_18)
+abline(0,0)#add a horizontal line at 0 
+
+#create Q-Q plot for model residuals
+qqnorm(model_all_resid_18) #To determine whether the residuals are normally distributed
+qqline(model_all_resid_18) #add a straight diagonal line to the plot
+
+#Density plot of residuals
+plot(density(model_all_resid_18))
+
+#checked for multicollinearity by calculating the Variance Inflation Factor
+vif_values_18 <- vif(model_all_18)
+print(vif_values_18)
+
+```
+
+## 2018 Incremental $R^2$
+This script below is used to calculate the incremental $R^2$ for the hierarchical ordinary least squares (OLS) (adding variables by Blocks) regression models for the prediction of vaccine confidence, vaccine hesitancy, vaccine history and vaccination likelihood.
+
+```{r}
+
+data_18 <- na.exclude(Survey_ICA_18)
+
+extensions_18 <- list(c("Q32_Avg", "Q7"), c("Q37", "Q39"), c("Q20_Avg", "Q19", "Q35"), "Q16_Avg")
+response_18 <- list("Q20_Avg", "Q19", "Q8B", "Q9" )
+
+results_list_18 <- list()
+
+for (i in seq_along(response_18)){
+
+base_formula_18 <- as.formula(paste(response_18[[i]], "~ GENDER + AGE + RACETHNICITY + INCOME + EDUC"))
+base_model_18 <- lm(base_formula_18, data = data_18)
+base_r_squared_18 <- summary(base_model_18)$r.squared
+
+results_list_18[[i]] <- list()
+
+for (ii in seq_along(extensions_18)) {
+    # Combine the base formula and the current extension
+    extended_formula_18 <- update(base_formula_18, paste("~ . +", paste(extensions_18[[ii]], collapse = " + ")))
+    
+    # Fit the extended model
+    extended_model_18 <- lm(extended_formula_18, data = data_18)
+
+    # Get the R-squared for the extended model
+    extended_r_squared_18 <- summary(extended_model_18)$r.squared
+
+    # Calculate the incremental R-squared (ΔR²)
+    delta_r_squared_18 <- extended_r_squared_18 - base_r_squared_18
+    
+    #Likelihood Ratio Test
+    LRT_18 <- anova(base_model_18, extended_model_18, test = "LRT")
+
+    # Result List
+    results_list_18[[i]][[ii]] <- list(
+      base_r_squared = base_r_squared_18,
+      extended_formula = extended_formula_18,
+      extended_model_sumry = summary(extended_model_18),
+      extended_r_squared = extended_r_squared_18,
+      delta_r_squared = delta_r_squared_18,
+      LRT = LRT_18)
+  
+    #Resetting base formula to last extension
+    base_formula_18 <- extended_formula_18
+    base_model_18 <- lm(base_formula_18, data = data_18)
+    base_r_squared_18 <- summary(base_model_18)$r.squared
+  }
+
+}
+
+results_list_18
+
+```
+
+# Descriptive Statistics (Used for both data sets)
+```{r}
+
+#2016 (and 2018 where applicable)
+
+#Means and Standard Deviations (with weighted option), and medians
+weighted_mean_sd(Survey_ICA_16$Q32_Avg, Survey_ICA_16$WEIGHT)
+
+with(Survey_ICA_16[Survey_ICA_16$GENDER == 1, ], weighted_mean_sd(Q19, WEIGHT)) #Male Hesitancy
+with(Survey_ICA_16[Survey_ICA_16$GENDER == 2, ], weighted_mean_sd(Q19, WEIGHT)) #Female Hesitancy
+
+
+weighted_table <- function(x, weights) {#Calculates the sum of the weights for each x (variable score value).
+  tapply(weights, x, sum)}
+
+weighted_table(Survey_ICA_16$Q7, Survey_ICA_16$WEIGHT)/sum(weighted_table(Survey_ICA_16$Q7, Survey_ICA_16$WEIGHT))
+
+#Median (Education shown)
+c("Median:", median(Survey_ICA_16$EDUC))
+
+
+#2018 Mean and Standard Deviation (unweighted; Intention shown)
+c("mean", mean(Survey_ICA_18$Q9, na.rm = TRUE))
+c("sd", sd(Survey_ICA_18$Q9, na.rm = TRUE))
+
+table(Survey_ICA_18$Q7)/sum(table(Survey_ICA_18$Q7))
+
+
+###Cronbach's Alpha###
+
+#Vaccine Confidence
+cronbach.alpha(na.omit(Survey_ICA_16[,c("Q20_A","Q20_B","Q20_C")])) #This gave a value, but doesn't match original for 2016
+
+#HDMP
+cronbach.alpha(na.omit(Survey_ICA_16[,c( "Q16_A", "Q16_E", "Q16_B", "Q16_F", "Q16_D", "Q16_H")]))
+#2018: "Q16_A", "Q16_F", "Q16_B", "Q16_G", "Q16_E", "Q16_I"
+#2016: "Q16_A", "Q16_E", "Q16_B", "Q16_F", "Q16_D", "Q16_H"
+
+#Perceived Flu Knowledge
+cronbach.alpha(na.omit(Survey_ICA_18[,c("Q32_A","Q32_B","Q32_C", "Q32_D")]))
+cronbach.alpha(na.omit(Survey_ICA_16[,c("Q32_A","Q32_B","Q32_C", "Q32_D")]))
+
+
+#t-tests
+
+#2016 - GENDER
+design <- svydesign(ids = ~1, weights = ~WEIGHT, data = Survey_ICA_16)
+svyttest(Q19 ~ factor(GENDER), design)
+#2018 - GENDER
+design <- svydesign(ids = ~1, data = Survey_ICA_18)
+svyttest(Q19 ~ factor(GENDER), design)
+
+```
+
+# Scatter Plot Vaccine Confidence vs. Vaccine Hesitancy 
+```{r}
+
+#Sub-setting vaccine confidence and vaccine hesitancy
+#2016
+sub_2016 <- Survey_ICA_16 %>%
+ dplyr::select(Q19, Q20_Avg) %>%
+  mutate(Year = rep(2016, dim(Survey_ICA_16)[1]))
+#2018
+sub_2018 <- Survey_ICA_18 %>%
+ dplyr::select(Q19, Q20_Avg) %>%
+  mutate(Year = rep(2018, dim(Survey_ICA_18)[1]))
+
+#Combines Data
+Combined_Data_16_18  <- rbind(sub_2016,sub_2018)
+
+
+#Calculating Spearman correlation With p-values
+cor_data <- Combined_Data_16_18 %>%
+  group_by(Year) %>%
+  summarise(
+    test = list(cor.test(Q19, Q20_Avg, method = "spearman", use = "complete.obs")),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    spearman = sapply(test, function(x) x$estimate),
+    p_value  = sapply(test, function(x) x$p.value),
+    label = paste0(Year, ": ρ = ", round(spearman, 2), 
+                   ", p = ", format.pval(p_value, digits = 3, eps = .001)),
+    x = Inf,  # Right edge of plot
+    y = seq(from = max(Combined_Data_16_18$Q20_Avg, na.rm = TRUE), 
+            by = -0.4, 
+            length.out = n())
+  )
+
+#Plot
+plot_image  <- ggplot(Combined_Data_16_18, aes(x = Q19, y = Q20_Avg))+
+  geom_point(aes(shape = factor(Year), color = factor(Year)), alpha = 0.6) +
+  geom_jitter(aes(shape = factor(Year), color = factor(Year)), width = 0.2, height = 0, alpha = 0.3) + 
+  geom_smooth(aes(color = factor(Year)), method = "lm", se = FALSE) +
+  scale_shape_manual(values = c("2016" = 16, "2018" = 17)) +  # 16: dot, 17: triangle
+  scale_color_manual(values = c("2016" = "black", "2018" = "blue")) +
+ # guides(color = "none", shape = "none")+
+    labs(
+    title = "Vaccine Hesitancy vs. Vaccine Confidence",
+    subtitle = "With Linear Regression Lines and Spearman Correlations",
+    x = "Vaccine Hesitancy Score ",
+    y = "Average Vaccine Confidence Score",
+    color = "Year", 
+    shape = "Year"
+  ) +
+    theme_minimal() +
+  #theme(legend.position = "none")
+  geom_text(
+    data = cor_data,
+    aes(x = x, y = y, label = label),
+    inherit.aes = FALSE,
+    hjust = 1.1, vjust = 1,
+    size = 4,
+    color = "black", fontface = "bold"
+  )
+
+plot_image
+
+```
+
+
