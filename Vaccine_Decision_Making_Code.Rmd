@@ -27,27 +27,19 @@ library(GGally)
 library(ltm)
 library(survey)
 
-# library(jtools)
-# library(dplyr)
-# library(ggcorrplot)
-# library(plotly)
-# library(ggplot2)
-# library(ggpmisc)
-# library(ggpubr)
-# library(patchwork)
-# library(RCPA3)
-# library(psych)
+
+#Import Data
+# SurveyData2016 <- read_sav()
+# SurveyData2018 <- read_sas()
  
 
+# # #Lab Computer##
+# SurveyData2016 <- read_sav("C:\\Users\\ka84085\\OneDrive - University of Georgia\\Desktop\\rstudio-export_8_9_24\\UnivGeorgia_AdultVacc2016Main.sav")
+# SurveyData2018 <- read_sas("C:\\Users\\ka84085\\OneDrive - University of Georgia\\Desktop\\rstudio-export_8_9_24\\pn8351_ugavacc_111618_unweighted.sas7bdat")
 
-
-# #Lab Computer##
-SurveyData2016 <- read_sav("C:\\Users\\ka84085\\OneDrive - University of Georgia\\Desktop\\rstudio-export_8_9_24\\UnivGeorgia_AdultVacc2016Main.sav")
-SurveyData2018 <- read_sas("C:\\Users\\ka84085\\OneDrive - University of Georgia\\Desktop\\rstudio-export_8_9_24\\pn8351_ugavacc_111618_unweighted.sas7bdat")
-
-# #Laptop##
-# SurveyData2016 <- read_sav("C:\\Users\\kerri\\OneDrive\\Desktop\\PIPP Phase 1\\Survey 2016\\UnivGeorgia_AdultVacc2016Main.sav")
-# SurveyData2018 <- read_sas("C:\\Users\\kerri\\OneDrive\\Desktop\\PIPP Phase 1\\Survey 2018\\pn8351_ugavacc_111618_unweighted.sas7bdat")
+#Laptop##
+SurveyData2016 <- read_sav("C:\\Users\\kerri\\OneDrive\\Desktop\\PIPP Phase 1\\Survey 2016\\UnivGeorgia_AdultVacc2016Main.sav")
+SurveyData2018 <- read_sas("C:\\Users\\kerri\\OneDrive\\Desktop\\PIPP Phase 1\\Survey 2018\\pn8351_ugavacc_111618_unweighted.sas7bdat")
 
 # #Server##
 # SurveyData2016 <- read_sav("/opt/home/ka84085/R/Survey_Data/UnivGeorgia_AdultVacc2016Main.sav")
@@ -63,6 +55,8 @@ SurveyData2018 <- read_sas("C:\\Users\\ka84085\\OneDrive - University of Georgia
 Q20_A : <u>All</u> of the vaccines recommended for adults are safe.\
 Q20_B : <u>All</u> of the vaccines recommended for adults are effective.<br>
 Q20_C : Your overall health will benefit from getting <u>all</u> the recommended vaccines for adults.\
+Composite Score: Q20_Avg
+
 *Vaccine Hesitancy*\
 Q19: Overall, how hesitant about getting recommended adult vaccines would you consider yourself to be?\
 *Vaccine History*\
@@ -80,6 +74,7 @@ GENDER + AGE + RACETHNICITY + INCOME + EDUC\
  B.	Who should receive the seasonal influenza or flu vaccine?\
  C.	The benefits associated with getting seasonal influenza or flu vaccine?\
  D.	The risks associated with not getting a seasonal influenza or flu vaccine?\
+ Composite Score: Q32_Avg
 *Dr. Recommendation*\
 Q7: In the past year, has a physician or healthcare provider told you that you should receive an influenza or flu vaccine?\
 
@@ -109,7 +104,8 @@ Q16_F *(Q16_G in 2018 Survey)*\
 Q16_D *(Q16_E in 2018 Survey)*\
 (e) “When sick or ill, I prefer as little medicine or treatment as possible” vs. “When sick or ill, I prefer as much medicine or treatment as possible,”	\
 Q16_H *(Q16_I in 2018 Survey)*\
-(f) “I usually wait until I have an illness or health problem and then take steps or actions to treat it” vs. “I usually take steps or actions in advance to prevent an illness or health problem.”	
+(f) “I usually wait until I have an illness or health problem and then take steps or actions to treat it” vs. “I usually take steps or actions in advance to prevent an illness or health problem.”\
+Composite Score: Q16_Avg
 
 
 ## 2016 Dataframe including both all components for the idependent and independent variables
@@ -128,9 +124,9 @@ dplyr::select(CaseId, WEIGHT, AGE, GENDER, RACETHNICITY, INCOME, EDUC, Q20_A, Q2
   mutate_at(vars(RACETHNICITY), as.numeric) %>%
   rowwise() %>%
 #Calculating a score (single value) for specific categories 
-  mutate(Q32_Avg = mean(c(Q32_A, Q32_B, Q32_C, Q32_D), na.rm = TRUE)) %>%
-  mutate(Q20_Avg = mean(c(Q20_A, Q20_B, Q20_C), na.rm = TRUE)) %>%
-  mutate(Q16_Avg = mean(c(Q16_A, Q16_E, Q16_B, Q16_F, Q16_D, Q16_H), na.rm = TRUE)) %>%
+  mutate(Q32_Avg = mean(c(Q32_A, Q32_B, Q32_C, Q32_D), na.rm = TRUE)) %>% #Flu Knowledge
+  mutate(Q20_Avg = mean(c(Q20_A, Q20_B, Q20_C), na.rm = TRUE)) %>% # Vaccine Confidence
+  mutate(Q16_Avg = mean(c(Q16_A, Q16_E, Q16_B, Q16_F, Q16_D, Q16_H), na.rm = TRUE)) %>% #Health decision-making preference
   ungroup()
 
 ```
@@ -138,36 +134,16 @@ dplyr::select(CaseId, WEIGHT, AGE, GENDER, RACETHNICITY, INCOME, EDUC, Q20_A, Q2
 ## 2016 Regression Model
 ```{r}
 
-#Full regression model
+#Regression model with all variables
 model_all_16 <- lm(Q9 ~ GENDER + AGE + RACETHNICITY + INCOME + EDUC + Q32_Avg + Q7  + Q37 + Q39 + Q20_Avg + Q19 + Q35 + Q16_Avg, data = na.exclude(Survey_ICA_16),weight = WEIGHT)
 summary(model_all_16)
 
-#For the Block 1 Incremental R2 significance
+#To Calculate Block 1 R-squared and significance
 model_B1_16 <- lm(Q9 ~ GENDER + AGE + RACETHNICITY + INCOME + EDUC, data = na.exclude(Survey_ICA_16), weight = WEIGHT)
 summary(model_B1_16)
 
 #Calculating table column sample size: 
 setNames(c(sum(complete.cases(Survey_ICA_16$Q20_Avg)) ,sum(complete.cases(Survey_ICA_16$Q19)), sum(complete.cases(Survey_ICA_16$Q8B)), sum(complete.cases(Survey_ICA_16$Q9))), c("Conf.", "Hes.", "Past Vx", "Intent"))
-
-```
-
-### 2016 Regression Diagnostics
-
-```{r}
-## Residuals
-#Calculate the residuals of MM model
-model_all_resid_16 <- resid(model_all_16)
-
-#produce residual vs. fitted plot
-plot(fitted(model_all_16), model_all_resid_16)
-abline(0,0)#add a horizontal line at 0 
-
-#create Q-Q plot for MM residuals
-qqnorm(model_all_resid_16) #To determine whether the residuals are normally distributed
-qqline(model_all_resid_16) #add a straight diagonal line to the plot
-
-#Create density plot of residuals
-plot(density(model_all_resid_16))
 
 ```
 
@@ -201,9 +177,8 @@ for (ii in seq_along(extensions_16)) {
     # Get the R-squared for the extended model
     extended_r_squared_16 <- summary(extended_model_16)$r.squared
 
-    # Calculate the incremental R-squared (ΔR²)
-    delta_r_squared_16 <- extended_r_squared_16 - base_r_squared_16 #Marginal difference (each extension)
-    #delta_r_squared_160 <- extended_r_squared_16 - Block1_r_squared_16 #Total difference
+    # Calculate the incremental R-squared
+    delta_r_squared_16 <- extended_r_squared_16 - base_r_squared_16
 
     #Likelihood Ratio Test
     LRT_16 <- anova(base_model_16, extended_model_16, test = "LRT")
@@ -257,39 +232,16 @@ print(results_list_16)
 
 ## 2018 Regression Model
 ```{r}
+#Regression model with all variables
 model_all_18 <- lm(Q8B ~ GENDER + AGE + RACETHNICITY + INCOME + EDUC + Q32_Avg + Q7  + Q37 + Q39 + Q20_Avg + Q19 + Q35 + Q16_Avg, data = Survey_ICA_18)
 summary(model_all_18)
 
-#For the Block 1 Incremental R2 significance
+#For the Block 1 Incremental R-squared significance
 model_B1_18 <- lm(Q20_Avg ~ GENDER + AGE + RACETHNICITY + INCOME + EDUC, data = na.exclude(Survey_ICA_18))
 summary(model_B1_18)
 
 #Calculating table column sample size
 c(sum(complete.cases(Survey_ICA_18$Q20_Avg)), sum(complete.cases(Survey_ICA_18$Q19)), sum(complete.cases(Survey_ICA_18$Q8B)), sum(complete.cases(Survey_ICA_18$Q9)))
-
-```
-
-### 2018 Regression Diagnostics
-
-```{r}
-
-#Full model residuals
-model_all_resid_18 <- resid(model_all_18)
-
-# residual vs. fitted plot
-plot(fitted(model_all_18), model_all_resid_18)
-abline(0,0)#add a horizontal line at 0 
-
-#create Q-Q plot for model residuals
-qqnorm(model_all_resid_18) #To determine whether the residuals are normally distributed
-qqline(model_all_resid_18) #add a straight diagonal line to the plot
-
-#Density plot of residuals
-plot(density(model_all_resid_18))
-
-#checked for multicollinearity by calculating the Variance Inflation Factor
-vif_values_18 <- vif(model_all_18)
-print(vif_values_18)
 
 ```
 
@@ -307,7 +259,7 @@ results_list_18 <- list()
 
 for (i in seq_along(response_18)){
 
-base_formula_18 <- as.formula(paste(response_18[[i]], "~ GENDER + AGE + RACETHNICITY + INCOME + EDUC"))
+base_formula_18 <- as.formula(paste(response_18[[i]], "~ GENDER + AGE + RACETHNICITY + INCOME + EDUC"))#Block 1
 base_model_18 <- lm(base_formula_18, data = data_18)
 base_r_squared_18 <- summary(base_model_18)$r.squared
 
@@ -323,10 +275,10 @@ for (ii in seq_along(extensions_18)) {
     # Get the R-squared for the extended model
     extended_r_squared_18 <- summary(extended_model_18)$r.squared
 
-    # Calculate the incremental R-squared (ΔR²)
+    # Calculate the incremental R-squared
     delta_r_squared_18 <- extended_r_squared_18 - base_r_squared_18
     
-    #Likelihood Ratio Test
+    # Likelihood Ratio Test
     LRT_18 <- anova(base_model_18, extended_model_18, test = "LRT")
 
     # Result List
@@ -361,11 +313,13 @@ weighted_mean_sd(Survey_ICA_16$Q32_Avg, Survey_ICA_16$WEIGHT)
 with(Survey_ICA_16[Survey_ICA_16$GENDER == 1, ], weighted_mean_sd(Q19, WEIGHT)) #Male Hesitancy
 with(Survey_ICA_16[Survey_ICA_16$GENDER == 2, ], weighted_mean_sd(Q19, WEIGHT)) #Female Hesitancy
 
+#Healthcare Recommendation Response
+#2016
+#Weighted counts
+count(x = Survey_ICA_16, Q7, wt = WEIGHT)
 
-weighted_table <- function(x, weights) {#Calculates the sum of the weights for each x (variable score value).
-  tapply(weights, x, sum)}
-
-weighted_table(Survey_ICA_16$Q7, Survey_ICA_16$WEIGHT)/sum(weighted_table(Survey_ICA_16$Q7, Survey_ICA_16$WEIGHT))
+#2018
+table(Survey_ICA_18$Q7)/sum(table(Survey_ICA_18$Q7))
 
 #Median (Education shown)
 c("Median:", median(Survey_ICA_16$EDUC))
@@ -381,7 +335,7 @@ table(Survey_ICA_18$Q7)/sum(table(Survey_ICA_18$Q7))
 ###Cronbach's Alpha###
 
 #Vaccine Confidence
-cronbach.alpha(na.omit(Survey_ICA_16[,c("Q20_A","Q20_B","Q20_C")])) #This gave a value, but doesn't match original for 2016
+cronbach.alpha(na.omit(Survey_ICA_16[,c("Q20_A","Q20_B","Q20_C")]))
 
 #HDMP
 cronbach.alpha(na.omit(Survey_ICA_16[,c( "Q16_A", "Q16_E", "Q16_B", "Q16_F", "Q16_D", "Q16_H")]))
@@ -421,7 +375,7 @@ sub_2018 <- Survey_ICA_18 %>%
 Combined_Data_16_18  <- rbind(sub_2016,sub_2018)
 
 
-#Calculating Spearman correlation With p-values
+#Calculating Spearman correlation With p-values to add to plot
 cor_data <- Combined_Data_16_18 %>%
   group_by(Year) %>%
   summarise(
@@ -433,7 +387,7 @@ cor_data <- Combined_Data_16_18 %>%
     p_value  = sapply(test, function(x) x$p.value),
     label = paste0(Year, ": ρ = ", round(spearman, 2), 
                    ", p = ", format.pval(p_value, digits = 3, eps = .001)),
-    x = Inf,  # Right edge of plot
+    x = Inf,
     y = seq(from = max(Combined_Data_16_18$Q20_Avg, na.rm = TRUE), 
             by = -0.4, 
             length.out = n())
@@ -446,7 +400,6 @@ plot_image  <- ggplot(Combined_Data_16_18, aes(x = Q19, y = Q20_Avg))+
   geom_smooth(aes(color = factor(Year)), method = "lm", se = FALSE) +
   scale_shape_manual(values = c("2016" = 16, "2018" = 17)) +  # 16: dot, 17: triangle
   scale_color_manual(values = c("2016" = "black", "2018" = "blue")) +
- # guides(color = "none", shape = "none")+
     labs(
     title = "Vaccine Hesitancy vs. Vaccine Confidence",
     subtitle = "With Linear Regression Lines and Spearman Correlations",
@@ -456,7 +409,6 @@ plot_image  <- ggplot(Combined_Data_16_18, aes(x = Q19, y = Q20_Avg))+
     shape = "Year"
   ) +
     theme_minimal() +
-  #theme(legend.position = "none")
   geom_text(
     data = cor_data,
     aes(x = x, y = y, label = label),
