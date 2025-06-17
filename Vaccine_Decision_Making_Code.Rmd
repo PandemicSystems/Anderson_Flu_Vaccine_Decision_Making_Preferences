@@ -23,28 +23,32 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 library(haven)
 library(tidyverse)
 library(car)
-library(GGally)
+library(GGally) # Requires package Hmisc
 library(ltm)
 library(survey)
 
+# Import Data -----------------------------------------------------------------------------------
 
-#Import Data
-# SurveyData2016 <- read_sav()
-# SurveyData2018 <- read_sas()
- 
-
-# # #Lab Computer##
+# # Lab Computer##
 # SurveyData2016 <- read_sav("C:\\Users\\ka84085\\OneDrive - University of Georgia\\Desktop\\rstudio-export_8_9_24\\UnivGeorgia_AdultVacc2016Main.sav")
 # SurveyData2018 <- read_sas("C:\\Users\\ka84085\\OneDrive - University of Georgia\\Desktop\\rstudio-export_8_9_24\\pn8351_ugavacc_111618_unweighted.sas7bdat")
 
-#Laptop##
-SurveyData2016 <- read_sav("C:\\Users\\kerri\\OneDrive\\Desktop\\PIPP Phase 1\\Survey 2016\\UnivGeorgia_AdultVacc2016Main.sav")
-SurveyData2018 <- read_sas("C:\\Users\\kerri\\OneDrive\\Desktop\\PIPP Phase 1\\Survey 2018\\pn8351_ugavacc_111618_unweighted.sas7bdat")
+# # Laptop##
+# SurveyData2016 <- read_sav("C:\\Users\\kerri\\OneDrive\\Desktop\\PIPP Phase 1\\Survey 2016\\UnivGeorgia_AdultVacc2016Main.sav")
+# SurveyData2018 <- read_sas("C:\\Users\\kerri\\OneDrive\\Desktop\\PIPP Phase 1\\Survey 2018\\pn8351_ugavacc_111618_unweighted.sas7bdat")
 
-# #Server##
+# # Server##
 # SurveyData2016 <- read_sav("/opt/home/ka84085/R/Survey_Data/UnivGeorgia_AdultVacc2016Main.sav")
 # SurveyData2018 <- read_sas("/opt/home/ka84085/R/Survey_Data/pn8351_ugavacc_111618_unweighted.sas7bdat")
 
+# Temporary Data folder in this repo##
+# Data are available upon request.
+# SurveyData2016 are located at 
+# https://github.com/PandemicSystems/DP3-survey/blob/main/data/2016%20Data%20Files%20(11-9-2016)/UnivGeorgia_AdultVacc2016Main.sav
+# SurveyData2018 are located at 
+# https://github.com/PandemicSystems/DP3-survey/blob/main/data/2018%20Vacc%20Data%20Files%20(11-16-18)/pn8351_ugavacc_111618_unweighted.sas7bdat
+SurveyData2016 <- read_sav("temp_data/UnivGeorgia_AdultVacc2016Main.sav")
+SurveyData2018 <- read_sas("temp_data/pn8351_ugavacc_111618_unweighted.sas7bdat")
 
 ```
 
