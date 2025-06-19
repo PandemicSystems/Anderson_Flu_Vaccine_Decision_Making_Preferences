@@ -23,23 +23,12 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 library(haven)
 library(tidyverse)
 library(car)
-library(GGally) # Requires package Hmisc
+library(Hmisc)
+library(GGally)
 library(ltm)
 library(survey)
 
 # Import Data -----------------------------------------------------------------------------------
-
-# # Lab Computer##
-# SurveyData2016 <- read_sav("C:\\Users\\ka84085\\OneDrive - University of Georgia\\Desktop\\rstudio-export_8_9_24\\UnivGeorgia_AdultVacc2016Main.sav")
-# SurveyData2018 <- read_sas("C:\\Users\\ka84085\\OneDrive - University of Georgia\\Desktop\\rstudio-export_8_9_24\\pn8351_ugavacc_111618_unweighted.sas7bdat")
-
-# # Laptop##
-# SurveyData2016 <- read_sav("C:\\Users\\kerri\\OneDrive\\Desktop\\PIPP Phase 1\\Survey 2016\\UnivGeorgia_AdultVacc2016Main.sav")
-# SurveyData2018 <- read_sas("C:\\Users\\kerri\\OneDrive\\Desktop\\PIPP Phase 1\\Survey 2018\\pn8351_ugavacc_111618_unweighted.sas7bdat")
-
-# # Server##
-# SurveyData2016 <- read_sav("/opt/home/ka84085/R/Survey_Data/UnivGeorgia_AdultVacc2016Main.sav")
-# SurveyData2018 <- read_sas("/opt/home/ka84085/R/Survey_Data/pn8351_ugavacc_111618_unweighted.sas7bdat")
 
 # Temporary Data folder in this repo##
 # Data are available upon request.
@@ -47,8 +36,8 @@ library(survey)
 # https://github.com/PandemicSystems/DP3-survey/blob/main/data/2016%20Data%20Files%20(11-9-2016)/UnivGeorgia_AdultVacc2016Main.sav
 # SurveyData2018 are located at 
 # https://github.com/PandemicSystems/DP3-survey/blob/main/data/2018%20Vacc%20Data%20Files%20(11-16-18)/pn8351_ugavacc_111618_unweighted.sas7bdat
-SurveyData2016 <- read_sav("temp_data/UnivGeorgia_AdultVacc2016Main.sav")
-SurveyData2018 <- read_sas("temp_data/pn8351_ugavacc_111618_unweighted.sas7bdat")
+# SurveyData2016 <- read_sav("temp_data/UnivGeorgia_AdultVacc2016Main.sav")
+# SurveyData2018 <- read_sas("temp_data/pn8351_ugavacc_111618_unweighted.sas7bdat")
 
 ```
 
@@ -196,7 +185,7 @@ for (ii in seq_along(extensions_16)) {
       delta_r_squared = delta_r_squared_16,
       LRT = LRT_16)
     
-    #Resetting base formula to last extension
+    # Resetting base formula to last extension
     base_formula_16 <- extended_formula_16
     base_model_16 <- lm(base_formula_16, data = data_16, weights = WEIGHT)
     base_r_squared_16 <- summary(base_model_16)$r.squared
@@ -375,27 +364,9 @@ sub_2018 <- Survey_ICA_18 %>%
  dplyr::select(Q19, Q20_Avg) %>%
   mutate(Year = rep(2018, dim(Survey_ICA_18)[1]))
 
-#Combines Data
-Combined_Data_16_18  <- rbind(sub_2016,sub_2018)
-
-
-#Calculating Spearman correlation With p-values to add to plot
-cor_data <- Combined_Data_16_18 %>%
-  group_by(Year) %>%
-  summarise(
-    test = list(cor.test(Q19, Q20_Avg, method = "spearman", use = "complete.obs")),
-    .groups = "drop"
-  ) %>%
-  mutate(
-    spearman = sapply(test, function(x) x$estimate),
-    p_value  = sapply(test, function(x) x$p.value),
-    label = paste0(Year, ": ρ = ", round(spearman, 2), 
-                   ", p = ", format.pval(p_value, digits = 3, eps = .001)),
-    x = Inf,
-    y = seq(from = max(Combined_Data_16_18$Q20_Avg, na.rm = TRUE), 
-            by = -0.4, 
-            length.out = n())
-  )
+#Calculating Spearman correlation With p-values
+cor.test(sub_2016$Q19, sub_2016$Q20_Avg, method = 'spearman') #2016
+cor.test(sub_2018$Q19, sub_2018$Q20_Avg, method = 'spearman') #2018
 
 #Plot
 plot_image  <- ggplot(Combined_Data_16_18, aes(x = Q19, y = Q20_Avg))+
@@ -411,16 +382,7 @@ plot_image  <- ggplot(Combined_Data_16_18, aes(x = Q19, y = Q20_Avg))+
     y = "Average Vaccine Confidence Score",
     color = "Year", 
     shape = "Year"
-  ) +
-    theme_minimal() +
-  geom_text(
-    data = cor_data,
-    aes(x = x, y = y, label = label),
-    inherit.aes = FALSE,
-    hjust = 1.1, vjust = 1,
-    size = 4,
-    color = "black", fontface = "bold"
-  )
+  ) + theme_minimal()
 
 plot_image
 
