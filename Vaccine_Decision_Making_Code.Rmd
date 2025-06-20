@@ -117,7 +117,7 @@ dplyr::select(CaseId, WEIGHT, AGE, GENDER, RACETHNICITY, INCOME, EDUC, Q20_A, Q2
   mutate_at(vars(RACETHNICITY), as.numeric) %>%
   rowwise() %>%
 #Calculating a score (single value) for specific categories 
-  mutate(Q32_Avg = mean(c(Q32_A, Q32_B, Q32_C, Q32_D), na.rm = TRUE)) %>% #Flu Knowledge
+  mutate(Q32_Avg = mean(c(Q32_A, Q32_B, Q32_C, Q32_D), na.rm = TRUE)) %>% # Flu Knowledge
   mutate(Q20_Avg = mean(c(Q20_A, Q20_B, Q20_C), na.rm = TRUE)) %>% # Vaccine Confidence
   mutate(Q16_Avg = mean(c(Q16_A, Q16_E, Q16_B, Q16_F, Q16_D, Q16_H), na.rm = TRUE)) %>% #Health decision-making preference
   ungroup()
@@ -217,9 +217,9 @@ print(results_list_16)
   mutate_at(vars(RACETHNICITY), as.numeric)%>%
   rowwise() %>%
 #Calculating a score (single value) for specific categories 
-  mutate(Q32_Avg = mean(c(Q32_A, Q32_B, Q32_C, Q32_D), na.rm = TRUE))%>%
-  mutate(Q20_Avg = mean(c(Q20_A, Q20_B, Q20_C), na.rm = TRUE)) %>%
-  mutate(Q16_Avg = mean(c(Q16_A, Q16_F, Q16_B, Q16_G, Q16_E, Q16_I), na.rm = TRUE)) %>%
+  mutate(Q32_Avg = mean(c(Q32_A, Q32_B, Q32_C, Q32_D), na.rm = TRUE))%>% # Flu Knowledge
+  mutate(Q20_Avg = mean(c(Q20_A, Q20_B, Q20_C), na.rm = TRUE)) %>% # Vaccine Confidence
+  mutate(Q16_Avg = mean(c(Q16_A, Q16_F, Q16_B, Q16_G, Q16_E, Q16_I), na.rm = TRUE)) %>% #Health decision-making preference
   ungroup()
 ```
 
@@ -387,5 +387,9 @@ plot_image  <- ggplot(Combined_Data_16_18, aes(x = Q19, y = Q20_Avg))+
 plot_image
 
 ```
+
+
+
+
 
 
